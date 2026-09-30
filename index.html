@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Roof Log">
+<title>Roof Repair Log</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#E9EDEF">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{
+  --bg:#E9EDEF; --surface:#FFFFFF; --ink:#15232A; --muted:#5A6A72; --line:#C9D2D6;
+  --accent:#F2C200; --accent-ink:#1A1A00; --blue:#1D5E8A; --blue-soft:#E1ECF4;
+  --extra:#7A3FA8; --extra-soft:#F1E8F8; --danger:#B3261E; --ok:#2F7A3B;
+  --sans:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --cond:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10181C; --surface:#1A252B; --ink:#E5ECEE; --muted:#93A4AB; --line:#2E3C43;
+    --blue:#7DB6DE; --blue-soft:#1C3242; --extra:#C9A0EA; --extra-soft:#2E2238; --danger:#F08A82; --ok:#7CC58A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10181C; --surface:#1A252B; --ink:#E5ECEE; --muted:#93A4AB; --line:#2E3C43;
+  --blue:#7DB6DE; --blue-soft:#1C3242; --extra:#C9A0EA; --extra-soft:#2E2238; --danger:#F08A82; --ok:#7CC58A;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.45;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:860px;margin:0 auto;padding:12px 16px 96px}
+header.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+header.bar .in{max-width:860px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px;min-height:56px}
+.back{border:0;background:none;font-weight:600;color:var(--blue);padding:8px 4px;font-size:17px;cursor:pointer}
+.bar h1{font-family:var(--cond);font-weight:700;font-size:22px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.saved{font-size:14px;color:var(--muted)}
+.hero{padding:18px 0 8px}
+.hero .parish{font-family:var(--cond);font-weight:800;font-size:clamp(44px,9vw,76px);line-height:.95;letter-spacing:-.01em;margin:0}
+.hero .sub{color:var(--muted);margin-top:6px}
+h2{font-family:var(--cond);font-weight:700;font-size:24px;margin:26px 0 10px}
+h3{font-size:17px;margin:18px 0 8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.list{list-style:none;margin:0;padding:0}
+.list li{border-bottom:1px solid var(--line)}
+.list li:last-child{border-bottom:0}
+.row{display:flex;align-items:center;gap:12px;padding:14px 16px;width:100%;background:none;border:0;text-align:left;cursor:pointer}
+.row .t{font-weight:600}
+.row .m{color:var(--muted);font-size:15px}
+.row .grow{flex:1;min-width:0}
+.chev{color:var(--muted);font-size:22px}
+.badge{font-size:13px;font-weight:600;padding:3px 8px;border-radius:99px;white-space:nowrap}
+.badge.sent{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.badge.draft{background:var(--blue-soft);color:var(--blue)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:0 20px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:600;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.blue{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,var(--line))}
+.btn.block{width:100%}
+.btn:disabled{opacity:.5}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}
+.btn:focus-visible,.row:focus-visible,input:focus-visible,select:focus-visible,.seg button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.seg{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px;margin:14px 0}
+.seg button{flex:1;min-height:44px;border:0;border-radius:7px;background:none;font-weight:600;cursor:pointer;color:var(--muted)}
+.seg button[aria-selected="true"]{background:var(--ink);color:var(--surface)}
+label.f{display:block;margin:12px 0}
+label.f span{display:block;font-size:15px;font-weight:600;color:var(--muted);margin-bottom:5px}
+input.in,select.in,textarea.in{width:100%;min-height:50px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+@media (max-width:560px){.grid2{grid-template-columns:1fr}}
+.gps{display:flex;gap:10px;align-items:stretch}
+.gps input{flex:1}
+.hint{font-size:14px;color:var(--muted);margin:6px 0 0}
+.err{color:var(--danger)}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.ph{position:relative;aspect-ratio:1;border-radius:9px;overflow:hidden;background:var(--line)}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph .x{position:absolute;top:4px;right:4px;width:32px;height:32px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:18px;cursor:pointer}
+.ph .n{position:absolute;left:6px;bottom:4px;color:#fff;font-size:13px;font-weight:700;text-shadow:0 1px 2px #000}
+.add{aspect-ratio:1;border:2px dashed var(--line);border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--blue);font-weight:600;cursor:pointer;background:var(--surface);text-align:center;font-size:15px;padding:6px}
+.add b{font-size:30px;line-height:1}
+.add input{display:none}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:16px}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+th{font-size:14px;color:var(--muted);font-weight:600}
+td.u{color:var(--muted);font-size:14px;text-align:left}
+.xcol{color:var(--extra)}
+.low{color:var(--danger);font-weight:700}
+.mat td{padding:6px 8px}
+.mat input{width:78px;min-height:44px;text-align:center;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:4px}
+.mat input.x{border-color:color-mix(in srgb,var(--extra) 45%,var(--line));background:var(--extra-soft)}
+.mat .nm{font-weight:600}
+.mat .oh{display:block;font-size:13px;color:var(--muted);font-weight:400}
+.empty{padding:26px 16px;text-align:center;color:var(--muted)}
+.note{background:var(--blue-soft);border-radius:10px;padding:12px 14px;font-size:15px;margin:12px 0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--surface);padding:12px 18px;border-radius:10px;font-weight:600;z-index:20;max-width:90vw;text-align:center}
+.rep h4{margin:18px 0 6px;font-size:16px}
+.rep .kv{color:var(--muted);font-size:15px}
+@media print{header.bar,.seg,.btns,.noprint{display:none!important}body{background:#fff;color:#000}.card{border:0}}
+</style>
+</head>
+<body>
+<header class="bar"><div class="in" id="bar"></div></header>
+<main class="wrap" id="app"><div class="empty">Loading…</div></main>
+<script>
+(function(){
+"use strict";
+const PARISHES=["Kingston","St. Andrew","St. Thomas","Portland","St. Mary","St. Ann","Trelawny","St. James","Hanover","Westmoreland","St. Elizabeth","Manchester","Clarendon","St. Catherine"];
+const MATS=[
+ {k:"zinc",n:"12' Roof zinc",u:"sheets"},{k:"ridge",n:"8' Ridge capping",u:"each"},
+ {k:"drip",n:'10" Drip edge',u:"each"},{k:"strap",n:"Hurricane strap",u:"each"},
+ {k:"b2x4",n:"2x4x12",u:"pieces"},{k:"b1x4",n:"1x4x12",u:"pieces"},
+ {k:"h3",n:'H3 1½" nails',u:"lbs"},{k:"w2",n:'2" wire',u:"lbs"},{k:"w3",n:'3" wire',u:"lbs"},
+ {k:"w4",n:'4" wire',u:"lbs"},{k:"head",n:'2½" head nails',u:"lbs"},{k:"screw",n:'2½" zinc screws',u:"each"},
+ {k:"fillet",n:"Wood fillets",u:"each"},{k:"wframe",n:"Window frame",u:"each"},
+ {k:"wblade",n:"Window blade",u:"each"},{k:"door",n:"Doors",u:"each"},{k:"verandah",n:"Verandah",u:"each"}
+];
+const HOUSE_TYPES=["Board","Block","Board & block","Other"];
+
+/* ---------- storage (IndexedDB, on this device only) ---------- */
+let idb=null; const mem={records:new Map()};
+function openDB(){return new Promise((res)=>{
+  try{const r=indexedDB.open("roof-log",1);
+    r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore("records",{keyPath:"id"});d.createObjectStore("photos");};
+    r.onsuccess=()=>{idb=r.result;res();};r.onerror=()=>res();
+  }catch(e){res();}
+});}
+function tx(store,mode,fn){return new Promise((res,rej)=>{
+  if(!idb){res(null);return;}
+  try{const t=idb.transaction(store,mode);const s=t.objectStore(store);const out=fn(s);
+    t.oncomplete=()=>res(out&&out.result!==undefined?out.result:null);t.onerror=()=>rej(t.error);
+  }catch(e){rej(e);}
+});}
+async function loadAll(){
+  if(!idb)return;
+  const all=await new Promise((res)=>{try{const q=idb.transaction("records").objectStore("records").getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([]);}catch(e){res([]);}});
+  all.forEach(r=>mem.records.set(r.id,r));
+}
+async function save(r){mem.records.set(r.id,r);try{await tx("records","readwrite",s=>s.put(r));flashSaved();}catch(e){toast("Couldn't save. Storage may be full.");}}
+async function remove(id){mem.records.delete(id);try{await tx("records","readwrite",s=>s.delete(id));}catch(e){}}
+const photoMem=new Map();
+async function putPhoto(id,blob){photoMem.set(id,blob);try{await tx("photos","readwrite",s=>s.put(blob,id));}catch(e){toast("Couldn't store photo. Storage may be full.");}}
+async function getPhoto(id){if(photoMem.has(id))return photoMem.get(id);
+  if(!idb)return null;
+  const b=await new Promise((res)=>{try{const q=idb.transaction("photos").objectStore("photos").get(id);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);}catch(e){res(null);}});
+  if(b)photoMem.set(id,b);return b;}
+async function delPhoto(id){photoMem.delete(id);if(urlCache.has(id)){URL.revokeObjectURL(urlCache.get(id));urlCache.delete(id);}try{await tx("photos","readwrite",s=>s.delete(id));}catch(e){}}
+
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const recs=t=>[...mem.records.values()].filter(r=>r.type===t);
+const projects=()=>recs("project").sort((a,b)=>b.created-a.created);
+const loadsOf=pid=>recs("load").filter(l=>l.pid===pid).sort((a,b)=>a.date.localeCompare(b.date)||a.created-b.created);
+const housesOf=pid=>recs("house").filter(h=>h.pid===pid).sort((a,b)=>a.created-b.created);
+const matsOf=p=>MATS.concat(p.custom||[]);
+const num=v=>{const n=parseFloat(v);return isFinite(n)?n:0;};
+const fmt=n=>{const r=Math.round(n*100)/100;return String(r);};
+const h=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
+const niceDate=s=>{if(!s)return"";const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"});};
+
+function totals(p){
+  const t={};matsOf(p).forEach(m=>t[m.k]={loaded:0,used:0,extra:0});
+  loadsOf(p.id).forEach(l=>Object.entries(l.qty||{}).forEach(([k,v])=>{if(t[k])t[k].loaded+=num(v);}));
+  housesOf(p.id).forEach(hs=>{
+    Object.entries(hs.used||{}).forEach(([k,v])=>{if(t[k])t[k].used+=num(v);});
+    Object.entries(hs.extra||{}).forEach(([k,v])=>{if(t[k])t[k].extra+=num(v);});
+  });
+  Object.values(t).forEach(x=>x.onhand=x.loaded-x.used-x.extra);
+  return t;
+}
+
+/* ---------- UI helpers ---------- */
+let savedTimer;function flashSaved(){const el=document.getElementById("savedLbl");if(!el)return;el.textContent="Saved";clearTimeout(savedTimer);savedTimer=setTimeout(()=>{if(el)el.textContent="";},1500);}
+let toastTimer;function toast(msg){let el=document.querySelector(".toast");if(!el){el=document.createElement("div");el.className="toast";el.setAttribute("role","status");document.body.appendChild(el);}el.textContent=msg;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.remove(),2800);}
+const urlCache=new Map();
+async function photoURL(id){if(urlCache.has(id))return urlCache.get(id);const b=await getPhoto(id);if(!b)return"";const u=URL.createObjectURL(b);urlCache.set(id,u);return u;}
+
+async function shrink(file){
+  try{
+    const url=URL.createObjectURL(file);
+    const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url;});
+    const max=2400;let w=img.naturalWidth,ht=img.naturalHeight;const sc=Math.min(1,max/Math.max(w,ht));
+    w=Math.round(w*sc);ht=Math.round(ht*sc);
+    const c=document.createElement("canvas");c.width=w;c.height=ht;c.getContext("2d").drawImage(img,0,0,w,ht);
+    URL.revokeObjectURL(url);
+    const b=await new Promise(res=>c.toBlob(res,"image/jpeg",0.88));
+    return b||file;
+  }catch(e){return file;}
+}
+
+/* ---------- navigation ---------- */
+let stack=[{v:"home"}];
+const cur=()=>stack[stack.length-1];
+function go(s){stack.push(s);render();window.scrollTo(0,0);}
+function back(){if(stack.length>1)stack.pop();render();window.scrollTo(0,0);}
+
+function setBar(title,showBack){
+  document.getElementById("bar").innerHTML=(showBack?'<button class="back" data-a="back" aria-label="Back">‹ Back</button>':'')+'<h1>'+h(title)+'</h1><span class="saved" id="savedLbl" aria-live="polite"></span>';
+}
+
+/* ---------- views ---------- */
+function render(){
+  const s=cur();const app=document.getElementById("app");
+  if(s.v==="home")return viewHome(app);
+  const p=mem.records.get(s.pid);if(!p){stack=[{v:"home"}];return viewHome(app);}
+  if(s.v==="project")return viewProject(app,p,s);
+  if(s.v==="load")return viewLoad(app,p,s);
+  if(s.v==="house")return viewHouse(app,p,s);
+}
+
+function viewHome(app){
+  setBar("Roof Repair Log",false);
+  const ps=projects();
+  app.innerHTML=
+   '<section class="hero"><p class="parish">Projects</p><p class="sub">One project per trip out. Each holds all the houses you do in that parish.</p></section>'+
+   '<div class="card" style="padding:4px 16px 16px"><h2 style="margin-top:14px">Start a new project</h2>'+
+   '<div class="grid2"><label class="f"><span>Parish</span><select class="in" id="np-parish">'+PARISHES.map(x=>'<option>'+x+'</option>').join("")+'</select></label>'+
+   '<label class="f"><span>Start date</span><input class="in" type="date" id="np-date" value="'+today()+'"></label></div>'+
+   '<label class="f"><span>Field officer (optional)</span><input class="in" id="np-officer" autocomplete="off"></label>'+
+   '<h3>Load from container</h3><p class="hint" style="margin-top:0">Enter what you take this morning. Leave blank anything you don\u2019t load.</p>'+
+   '<div class="scroll" style="margin-top:8px"><table class="mat"><thead><tr><th>Material</th><th>Loaded</th></tr></thead><tbody>'+
+   MATS.map(m=>'<tr><td><span class="nm">'+h(m.n)+'</span><span class="oh">'+h(m.u)+'</span></td><td><input type="number" inputmode="decimal" min="0" step="any" data-np="'+m.k+'" aria-label="'+h(m.n)+' loaded"></td></tr>').join("")+
+   '</tbody></table></div>'+
+   '<button class="btn primary block" style="margin-top:14px" data-a="newProject">Start project</button></div>'+
+   '<h2>Your projects</h2>'+
+   (ps.length?'<ul class="list card">'+ps.map(p=>{const n=housesOf(p.id).length;return '<li><button class="row" data-a="openProject" data-id="'+p.id+'"><span class="grow"><span class="t">'+h(p.parish)+'</span><br><span class="m">Started '+h(niceDate(p.date))+' · '+n+' house'+(n===1?'':'s')+'</span></span><span class="chev">›</span></button></li>';}).join("")+'</ul>'
+     :'<div class="card empty">No projects yet. Start one above when you head out.</div>')+
+   extrasAllHTML(ps)+
+   '<p class="hint">Everything is stored only on this tablet.</p>';
+}
+
+function extrasAllHTML(ps){
+  if(!ps.length)return"";
+  const all={};const per=[];
+  ps.forEach(p=>{const t=totals(p);const row={p,items:{}};
+    matsOf(p).forEach(m=>{const e=t[m.k].extra;if(e){const key=m.n+"|"+m.u;all[key]=(all[key]||0)+e;row.items[key]=e;}});
+    if(Object.keys(row.items).length)per.push(row);});
+  const keys=Object.keys(all);
+  if(!keys.length)return '<h2>Extras across all projects</h2><div class="card empty">No extras recorded yet.</div>';
+  return '<h2>Extras across all projects</h2><div class="card scroll"><table><thead><tr><th>Material</th><th>Unit</th>'+
+    per.map(r=>'<th>'+h(r.p.parish)+'<br><span style="font-weight:400">'+h(niceDate(r.p.date))+'</span></th>').join("")+
+    '<th class="xcol">Total</th></tr></thead><tbody>'+
+    keys.map(k=>{const [n,u]=k.split("|");return '<tr><td>'+h(n)+'</td><td class="u">'+h(u)+'</td>'+per.map(r=>'<td>'+(r.items[k]?fmt(r.items[k]):'–')+'</td>').join("")+'<td class="xcol"><b>'+fmt(all[k])+'</b></td></tr>';}).join("")+
+    '</tbody></table></div><p class="hint">Adds up the Extra column from every house in every project.</p>';
+}
+
+function viewProject(app,p,s){
+  setBar(p.parish,true);
+  const tab=s.tab||"houses";
+  const hs=housesOf(p.id);
+  let body="";
+  if(tab==="houses"){
+    body='<div class="btns" style="margin-top:0"><button class="btn primary" style="flex:2" data-a="newHouse">Add house</button><button class="btn" style="flex:1" data-a="newLoad">Load from container</button></div>'+
+     (hs.length?'<ul class="list card" style="margin-top:14px">'+hs.slice().reverse().map(x=>'<li><button class="row" data-a="openHouse" data-id="'+x.id+'"><span class="grow"><span class="t">'+h(x.name||"Unnamed recipient")+'</span><br><span class="m">'+h(x.address||"No address yet")+'</span></span>'+(x.sentAt?'<span class="badge sent">Sent</span>':'<span class="badge draft">Not sent</span>')+'<span class="chev">›</span></button></li>').join("")+'</ul>'
+      :'<div class="card empty" style="margin-top:14px">No houses yet. Add one when you reach a recipient.</div>');
+  }else if(tab==="stock"){
+    const t=totals(p);const ls=loadsOf(p.id);
+    body='<div class="btns"><button class="btn primary" data-a="newLoad">Add load from container</button><button class="btn" data-a="addMat">Add other material</button></div>'+
+     '<div class="card scroll"><table><thead><tr><th>Material</th><th>Unit</th><th>Loaded</th><th>Used</th><th class="xcol">Extra</th><th>On hand</th></tr></thead><tbody>'+
+     matsOf(p).map(m=>{const x=t[m.k];return '<tr><td>'+h(m.n)+'</td><td class="u">'+h(m.u)+'</td><td>'+fmt(x.loaded)+'</td><td>'+fmt(x.used)+'</td><td class="xcol">'+fmt(x.extra)+'</td><td class="'+(x.onhand<0?'low':'')+'">'+fmt(x.onhand)+'</td></tr>';}).join("")+
+     '</tbody></table></div>'+
+     '<h2>Loads</h2>'+
+     (ls.length?'<ul class="list card">'+ls.map((l,i)=>{const items=Object.entries(l.qty||{}).filter(([,v])=>num(v)>0).length;return '<li><button class="row" data-a="openLoad" data-id="'+l.id+'"><span class="grow"><span class="t">Load '+(i+1)+'</span><br><span class="m">'+h(niceDate(l.date))+' · '+items+' item'+(items===1?'':'s')+'</span></span><span class="chev">›</span></button></li>';}).join("")+'</ul>'
+      :'<div class="card empty">No loads yet. Add what you take from the container.</div>')+
+     '<p class="hint">On hand = everything loaded minus used and extra across all houses. Leftovers carry through the whole project.</p>';
+  }else{
+    body=reportHTML(p)+'<div class="btns noprint"><button class="btn blue" data-a="shareReport">Share report</button><button class="btn" data-a="saveCSV">Save as spreadsheet (CSV)</button><button class="btn" data-a="print">Print / PDF</button></div>';
+  }
+  app.innerHTML='<section class="hero"><p class="parish">'+h(p.parish)+'</p><p class="sub">Started '+h(niceDate(p.date))+(p.officer?' · Field officer: '+h(p.officer):'')+'</p></section>'+
+   '<div class="seg" role="tablist">'+[["houses","Houses ("+hs.length+")"],["stock","Materials"],["report","Report"]].map(([k,l])=>'<button role="tab" aria-selected="'+(tab===k)+'" data-a="tab" data-id="'+k+'">'+l+'</button>').join("")+'</div>'+body+
+   (tab==="houses"?'<div class="btns" style="margin-top:30px"><button class="btn" data-a="editProject">Edit project details</button><button class="btn danger" data-a="delProject">Delete project</button></div>':'');
+}
+
+function reportHTML(p){
+  const t=totals(p);const ls=loadsOf(p.id);const hs=housesOf(p.id);const ms=matsOf(p);
+  const nz=k=>t[k].loaded||t[k].used||t[k].extra;
+  const used=ms.filter(m=>nz(m.k));
+  let out='<div class="card rep" style="padding:14px 16px"><h3 style="margin-top:0">Hurricane roof repair: '+h(p.parish)+'</h3>'+
+   '<div class="kv">Started '+h(niceDate(p.date))+(p.officer?' · Field officer: '+h(p.officer):'')+' · '+hs.length+' house'+(hs.length===1?'':'s')+' · '+ls.length+' load'+(ls.length===1?'':'s')+'</div>'+
+   '<h4>Materials summary</h4>'+
+   (used.length?'<div class="scroll"><table><thead><tr><th>Material</th><th>Unit</th><th>Loaded</th><th>Used</th><th class="xcol">Extra</th><th>Total out</th><th>On hand</th></tr></thead><tbody>'+
+     used.map(m=>{const x=t[m.k];return '<tr><td>'+h(m.n)+'</td><td class="u">'+h(m.u)+'</td><td>'+fmt(x.loaded)+'</td><td>'+fmt(x.used)+'</td><td class="xcol">'+fmt(x.extra)+'</td><td>'+fmt(x.used+x.extra)+'</td><td>'+fmt(x.onhand)+'</td></tr>';}).join("")+
+     '</tbody></table></div>':'<p class="kv">No materials recorded yet.</p>')+
+   '<h4>Loads</h4>'+(ls.length?ls.map((l,i)=>'<p class="kv" style="margin:4px 0"><b>Load '+(i+1)+'</b>, '+h(niceDate(l.date))+': '+ms.filter(m=>num((l.qty||{})[m.k])>0).map(m=>h(m.n)+' '+fmt(num(l.qty[m.k]))+' '+h(m.u)).join(", ")+'</p>').join(""):'<p class="kv">None</p>')+
+   '<h4>Houses</h4>';
+  out+=hs.length?hs.map((x,i)=>{
+    const rows=ms.filter(m=>num((x.used||{})[m.k])||num((x.extra||{})[m.k]));
+    return '<div style="border-top:1px solid var(--line);padding:8px 0"><b>'+(i+1)+'. '+h(x.name||"Unnamed")+'</b><div class="kv">'+[x.address,x.phone,x.houseType,x.gps?"GPS "+x.gps:""].filter(Boolean).map(h).join(" · ")+'</div>'+
+     (rows.length?'<div class="kv">'+rows.map(m=>{const u=num((x.used||{})[m.k]),e=num((x.extra||{})[m.k]);return h(m.n)+': '+fmt(u)+(e?' + <span class="xcol">'+fmt(e)+' extra</span>':'');}).join("; ")+'</div>':'<div class="kv">No materials recorded</div>')+'</div>';
+  }).join(""):'<p class="kv">None</p>';
+  return out+'</div>';
+}
+
+function reportText(p){
+  const t=totals(p);const ls=loadsOf(p.id);const hs=housesOf(p.id);const ms=matsOf(p);
+  const L=[];L.push("HURRICANE ROOF REPAIR – "+p.parish.toUpperCase());
+  L.push("Started "+niceDate(p.date)+(p.officer?" | Field officer: "+p.officer:"")+" | "+hs.length+" houses");
+  L.push("","MATERIALS (loaded / used / extra / on hand)");
+  ms.forEach(m=>{const x=t[m.k];if(x.loaded||x.used||x.extra)L.push(m.n+" ("+m.u+"): "+fmt(x.loaded)+" / "+fmt(x.used)+" / "+fmt(x.extra)+" / "+fmt(x.onhand));});
+  L.push("","LOADS");ls.forEach((l,i)=>L.push("Load "+(i+1)+", "+niceDate(l.date)+": "+ms.filter(m=>num((l.qty||{})[m.k])>0).map(m=>m.n+" "+fmt(num(l.qty[m.k]))).join(", ")));
+  L.push("","HOUSES");
+  hs.forEach((x,i)=>{L.push((i+1)+". "+(x.name||"Unnamed")+(x.address?", "+x.address:"")+(x.phone?", "+x.phone:"")+(x.houseType?", "+x.houseType:"")+(x.gps?", GPS "+x.gps:""));
+    ms.forEach(m=>{const u=num((x.used||{})[m.k]),e=num((x.extra||{})[m.k]);if(u||e)L.push("   "+m.n+": "+fmt(u)+(e?" + "+fmt(e)+" extra":""));});});
+  return L.join("\n");
+}
+function reportCSV(p){
+  const t=totals(p);const hs=housesOf(p.id);const ms=matsOf(p);
+  const q=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"';
+  const rows=[["Materials summary",p.parish,niceDate(p.date)],["Material","Unit","Loaded","Used","Extra","Total out","On hand"]];
+  ms.forEach(m=>{const x=t[m.k];rows.push([m.n,m.u,fmt(x.loaded),fmt(x.used),fmt(x.extra),fmt(x.used+x.extra),fmt(x.onhand)]);});
+  rows.push([],["Houses"]);
+  const head=["#","Name","Address","Phone","House type","GPS","Sent"];ms.forEach(m=>{head.push(m.n+" used");head.push(m.n+" extra");});rows.push(head);
+  hs.forEach((x,i)=>{const r=[i+1,x.name,x.address,x.phone,x.houseType,x.gps,x.sentAt?new Date(x.sentAt).toLocaleString():""];ms.forEach(m=>{r.push(fmt(num((x.used||{})[m.k])));r.push(fmt(num((x.extra||{})[m.k])));});rows.push(r);});
+  return rows.map(r=>r.map(q).join(",")).join("\r\n");
+}
+
+function viewLoad(app,p,s){
+  const l=mem.records.get(s.lid);if(!l){back();return;}
+  setBar("Load",true);
+  const t=totals(p);
+  app.innerHTML='<section class="hero"><p class="parish" style="font-size:44px">Load from container</p><p class="sub">'+h(p.parish)+'. Enter only what you took this time.</p></section>'+
+   '<label class="f"><span>Date</span><input class="in" type="date" data-f="date" value="'+h(l.date)+'"></label>'+
+   '<div class="card scroll"><table class="mat"><thead><tr><th>Material</th><th>Loaded</th></tr></thead><tbody>'+
+   matsOf(p).map(m=>'<tr><td><span class="nm">'+h(m.n)+'</span><span class="oh">'+h(m.u)+' · '+fmt(t[m.k].onhand)+' on hand</span></td><td><input type="number" inputmode="decimal" min="0" step="any" data-q="'+m.k+'" value="'+(num((l.qty||{})[m.k])||"")+'" aria-label="'+h(m.n)+' loaded"></td></tr>').join("")+
+   '</tbody></table></div><div class="btns"><button class="btn primary" data-a="back">Done</button><button class="btn danger" data-a="delLoad">Delete load</button></div>';
+}
+
+async function viewHouse(app,p,s){
+  const x=mem.records.get(s.hid);if(!x){back();return;}
+  setBar(x.name||"New house",true);
+  const t=totals(p);const ms=matsOf(p);
+  const photoSection=(slot,label,multi)=>{
+    const ids=slot==="id"?(x.photos.id?[x.photos.id]:[]):x.photos[slot];
+    return '<h3>'+label+'</h3><div class="photos" data-slot="'+slot+'">'+
+      ids.map((id,i)=>'<div class="ph"><img data-pid="'+id+'" alt="'+h(label)+' '+(i+1)+'"><span class="n">'+(multi?(i+1):"")+'</span><button class="x" data-a="rmPhoto" data-slot="'+slot+'" data-id="'+id+'" aria-label="Remove photo">×</button></div>').join("")+
+      ((multi||!ids.length)?'<label class="add"><b>+</b>'+(slot==="id"?"Photo of ID":"Add photo")+'<input type="file" accept="image/*" '+(multi?"multiple":"capture=\"environment\"")+' data-slot="'+slot+'"></label>':'')+
+      '</div>';
+  };
+  const nPhotos=(x.photos.id?1:0)+x.photos.before.length+x.photos.after.length;
+  const matsBlock='<h2>Materials used</h2><div class="card scroll"><table class="mat"><thead><tr><th>Material</th><th>Used</th><th class="xcol">Extra</th></tr></thead><tbody>'+
+   ms.map(m=>'<tr><td><span class="nm">'+h(m.n)+'</span><span class="oh">'+h(m.u)+' · '+fmt(t[m.k].onhand)+' on hand</span></td>'+
+     '<td><input type="number" inputmode="decimal" min="0" step="any" data-u="'+m.k+'" value="'+(num((x.used||{})[m.k])||"")+'" aria-label="'+h(m.n)+' used"></td>'+
+     '<td><input class="x" type="number" inputmode="decimal" min="0" step="any" data-x="'+m.k+'" value="'+(num((x.extra||{})[m.k])||"")+'" aria-label="'+h(m.n)+' extra"></td></tr>').join("")+
+   '</tbody></table></div><p class="hint">Both columns come off your stock and both show in the report, listed separately.</p>';
+  const detailsBlock='<h2>Recipient details</h2><div class="card" style="padding:4px 16px 12px">'+
+   '<label class="f"><span>GPS</span></label><div class="gps"><input class="in" data-f="gps" value="'+h(x.gps)+'" placeholder="lat, long" inputmode="decimal" aria-label="GPS coordinates"><button class="btn blue" data-a="gps">Get GPS</button></div><p class="hint" id="gpsMsg"></p>'+
+   '<label class="f"><span>Recipient name</span><input class="in" data-f="name" value="'+h(x.name)+'" autocomplete="off"></label>'+
+   '<label class="f"><span>Address</span><input class="in" data-f="address" value="'+h(x.address)+'" autocomplete="off"></label>'+
+   '<div class="grid2"><label class="f"><span>Telephone</span><input class="in" type="tel" data-f="phone" value="'+h(x.phone)+'"></label>'+
+   '<label class="f"><span>Type of house</span><select class="in" data-f="houseType"><option value="">Choose…</option>'+HOUSE_TYPES.map(o=>'<option'+(x.houseType===o?' selected':'')+'>'+o+'</option>').join("")+'</select></label></div>'+
+   '</div>';
+  app.innerHTML=
+   '<section class="hero"><p class="parish" style="font-size:44px">'+h(x.name||"New house")+'</p><p class="sub">'+h(p.parish)+(x.sentAt?' · Sent '+h(new Date(x.sentAt).toLocaleString()):'')+'</p></section>'+
+   '<div class="card" style="padding:2px 16px 16px">'+
+   photoSection("before","1. Before: the damage",true)+
+   photoSection("id","2. Government ID",false)+
+   photoSection("after","3. After: the finished job",true)+
+   '</div>'+
+   matsBlock+detailsBlock+
+   '<div class="btns" style="margin-top:22px"><button class="btn primary block" data-a="send"'+(nPhotos?'':' disabled')+'>Send '+nPhotos+' photo'+(nPhotos===1?'':'s')+' to WhatsApp</button></div>'+
+   '<p class="hint">Sends the ID first, then before, then after, with no text. Pick your supervisor\u2019s group in the share sheet.</p>'+
+   '<div class="btns" style="margin-top:28px">'+(x.sentAt?'<button class="btn" data-a="unsend">Mark as not sent</button>':'')+(nPhotos?'<button class="btn" data-a="clearPhotos">Clear photos from tablet</button>':'')+'<button class="btn danger" data-a="delHouse">Delete house</button></div>';
+  app.querySelectorAll("img[data-pid]").forEach(async img=>{img.src=await photoURL(img.dataset.pid);});
+}
+
+/* ---------- actions ---------- */
+function curHouse(){const s=cur();return s.v==="house"?mem.records.get(s.hid):null;}
+function curLoad(){const s=cur();return s.v==="load"?mem.records.get(s.lid):null;}
+function curProject(){const s=cur();return s.pid?mem.records.get(s.pid):null;}
+
+async function getDownloads(){try{return window.claude&&window.claude.use?await window.claude.use("downloads"):null;}catch(e){return null;}}
+async function offerFile(filename,blob){
+  try{const f=new File([blob],filename,{type:blob.type});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});return true;}}catch(e){if(e&&e.name==="AbortError")return false;}
+  const dl=await getDownloads();
+  if(dl){try{await dl.save({filename,data:blob});return true;}catch(e){if(e&&e.code==="declined")return false;}}
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();a.remove();return true;}catch(e){}
+  toast("Saving files isn't available here.");return false;
+}
+
+async function sendHouse(x){
+  const ids=[].concat(x.photos.id?[["ID",x.photos.id]]:[],x.photos.before.map((id,i)=>["BEFORE_"+(i+1),id]),x.photos.after.map((id,i)=>["AFTER_"+(i+1),id]));
+  const files=[];for(const [n,id] of ids){const b=await getPhoto(id);if(b)files.push(new File([b],n+".jpg",{type:"image/jpeg"}));}
+  if(!files.length){toast("No photos to send.");return;}
+  let shared=false;
+  if(navigator.canShare&&navigator.canShare({files})){
+    try{await navigator.share({files});shared=true;}catch(e){if(e&&e.name==="AbortError")return;}
+  }
+  if(!shared){
+    if(!window.JSZip){toast("Sharing isn't available here. Open this page in Safari.");return;}
+    toast("Sharing photos directly isn't available here. Saving them as one zip instead.");
+    const z=new JSZip();files.forEach(f=>z.file(f.name,f));
+    const blob=await z.generateAsync({type:"blob"});
+    shared=await offerFile(((x.name||"house").replace(/[^\w]+/g,"_"))+".zip",blob);
+    if(!shared)return;
+  }
+  if(confirm("Mark this house as sent?")){x.sentAt=Date.now();await save(x);render();}
+}
+
+function markDirty(){}
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-a]");if(!b)return;
+  const a=b.dataset.a;const id=b.dataset.id;
+  if(a==="back")return back();
+  if(a==="newProject"){
+    const p={id:uid(),type:"project",parish:document.getElementById("np-parish").value,date:document.getElementById("np-date").value||today(),officer:document.getElementById("np-officer").value.trim(),custom:[],created:Date.now()};
+    await save(p);
+    const qty={};document.querySelectorAll("[data-np]").forEach(i=>{const v=num(i.value);if(v>0)qty[i.dataset.np]=v;});
+    if(Object.keys(qty).length)await save({id:uid(),type:"load",pid:p.id,date:p.date,qty,created:Date.now()});
+    return go({v:"project",pid:p.id,tab:"houses"});
+  }
+  if(a==="openProject")return go({v:"project",pid:id,tab:"houses"});
+  if(a==="tab"){cur().tab=id;return render();}
+  const p=curProject();
+  if(a==="editProject"&&p){
+    const par=prompt("Parish",p.parish);if(par===null)return;
+    const off=prompt("Field officer (optional)",p.officer||"");if(off===null)return;
+    p.parish=par.trim()||p.parish;p.officer=off.trim();await save(p);return render();
+  }
+  if(a==="delProject"&&p){
+    if(!confirm("Delete the "+p.parish+" project, all its houses, loads and photos? This can't be undone."))return;
+    for(const x of housesOf(p.id)){for(const pid of [x.photos.id,...x.photos.before,...x.photos.after].filter(Boolean))await delPhoto(pid);await remove(x.id);}
+    for(const l of loadsOf(p.id))await remove(l.id);
+    await remove(p.id);stack=[{v:"home"}];return render();
+  }
+  if(a==="newLoad"&&p){const l={id:uid(),type:"load",pid:p.id,date:today(),qty:{},created:Date.now()};await save(l);return go({v:"load",pid:p.id,lid:l.id});}
+  if(a==="openLoad"&&p)return go({v:"load",pid:p.id,lid:id});
+  if(a==="delLoad"){const l=curLoad();if(l&&confirm("Delete this load?")){await remove(l.id);back();}return;}
+  if(a==="addMat"&&p){
+    const n=prompt("Material name (e.g. Verandah post)");if(!n||!n.trim())return;
+    const u=prompt("Unit (each, pieces, lbs, sheets…)","each");if(u===null)return;
+    p.custom=p.custom||[];p.custom.push({k:"c_"+uid(),n:n.trim(),u:(u.trim()||"each")});await save(p);return render();
+  }
+  if(a==="newHouse"&&p){const x={id:uid(),type:"house",pid:p.id,name:"",address:"",phone:"",houseType:"",gps:"",used:{},extra:{},photos:{id:null,before:[],after:[]},created:Date.now()};await save(x);return go({v:"house",pid:p.id,hid:x.id});}
+  if(a==="openHouse"&&p)return go({v:"house",pid:p.id,hid:id});
+  const x=curHouse();
+  if(a==="gps"&&x){
+    const msg=document.getElementById("gpsMsg");
+    if(!navigator.geolocation){msg.textContent="GPS isn't available here. Type the coordinates.";msg.className="hint err";return;}
+    msg.textContent="Getting location…";msg.className="hint";b.disabled=true;
+    navigator.geolocation.getCurrentPosition(async pos=>{
+      x.gps=pos.coords.latitude.toFixed(6)+", "+pos.coords.longitude.toFixed(6);await save(x);
+      const inp=document.querySelector('[data-f="gps"]');if(inp)inp.value=x.gps;
+      msg.textContent="Accurate to about "+Math.round(pos.coords.accuracy)+" m.";b.disabled=false;
+    },err=>{msg.textContent=err.code===1?"Location is blocked. Open this page in Safari and allow location, or type the coordinates.":"Couldn't get a fix. Step outside and try again, or type the coordinates.";msg.className="hint err";b.disabled=false;},
+    {enableHighAccuracy:true,timeout:20000,maximumAge:0});
+    return;
+  }
+  if(a==="rmPhoto"&&x){
+    if(!confirm("Remove this photo?"))return;
+    const slot=b.dataset.slot;if(slot==="id")x.photos.id=null;else x.photos[slot]=x.photos[slot].filter(q=>q!==id);
+    await delPhoto(id);await save(x);return render();
+  }
+  if(a==="send"&&x)return sendHouse(x);
+  if(a==="unsend"&&x){x.sentAt=null;await save(x);return render();}
+  if(a==="clearPhotos"&&x){
+    if(!confirm("Delete all photos for this house from the tablet? The details and materials stay."))return;
+    for(const pid of [x.photos.id,...x.photos.before,...x.photos.after].filter(Boolean))await delPhoto(pid);
+    x.photos={id:null,before:[],after:[]};await save(x);return render();
+  }
+  if(a==="delHouse"&&x){
+    if(!confirm("Delete this house and its photos?"))return;
+    for(const pid of [x.photos.id,...x.photos.before,...x.photos.after].filter(Boolean))await delPhoto(pid);
+    await remove(x.id);return back();
+  }
+  if(a==="shareReport"&&p){
+    const text=reportText(p);
+    try{if(navigator.share){await navigator.share({title:"Report – "+p.parish,text});return;}}catch(err){if(err&&err.name==="AbortError")return;}
+    try{await navigator.clipboard.writeText(text);toast("Report copied. Paste it into WhatsApp.");}catch(err){toast("Sharing isn't available here.");}
+    return;
+  }
+  if(a==="saveCSV"&&p){await offerFile("Report_"+p.parish.replace(/[^\w]+/g,"_")+"_"+p.date+".csv",new Blob(["\ufeff"+reportCSV(p)],{type:"text/csv"}));return;}
+  if(a==="print")return window.print();
+});
+
+let saveT;
+document.addEventListener("input",e=>{
+  const el=e.target;const x=curHouse();const l=curLoad();
+  const rec=x||l;if(!rec)return;
+  if(el.dataset.f){rec[el.dataset.f]=el.value;if(x&&el.dataset.f==="name")setTitle(el.value||"New house");}
+  else if(el.dataset.u&&x){x.used[el.dataset.u]=num(el.value);}
+  else if(el.dataset.x&&x){x.extra[el.dataset.x]=num(el.value);}
+  else if(el.dataset.q&&l){l.qty[el.dataset.q]=num(el.value);}
+  else return;
+  clearTimeout(saveT);saveT=setTimeout(()=>save(rec),400);
+});
+function setTitle(t){const e=document.querySelector(".bar h1");if(e)e.textContent=t;const hp=document.querySelector(".hero .parish");if(hp&&cur().v==="house")hp.textContent=t;}
+document.addEventListener("change",async e=>{
+  const el=e.target;
+  if(el.matches("select[data-f]")){const x=curHouse();if(x){x[el.dataset.f]=el.value;await save(x);}return;}
+  if(el.type==="file"&&el.dataset.slot){
+    const x=curHouse();if(!x||!el.files.length)return;
+    const slot=el.dataset.slot;toast("Adding photo"+(el.files.length>1?"s":"")+"…");
+    for(const f of [...el.files]){
+      const blob=await shrink(f);const pid=uid();await putPhoto(pid,blob);
+      if(slot==="id"){if(x.photos.id)await delPhoto(x.photos.id);x.photos.id=pid;}else x.photos[slot].push(pid);
+    }
+    await save(x);render();
+  }
+});
+
+(async function init(){
+  await openDB();await loadAll();
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
+  if(!idb){document.getElementById("app").insertAdjacentHTML("afterbegin","");}
+  render();
+  if(!idb)toast("Storage is unavailable here, so nothing will be kept. Open this page in Safari.");
+})();
+})();
+</script>
+<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{});});}</script>
+</body>
+</html>
