@@ -333,7 +333,7 @@ function viewLoad(app,p,s){
    '<label class="f"><span>Date</span><input class="in" type="date" data-f="date" value="'+h(l.date)+'"></label>'+
    '<div class="card scroll"><table class="mat"><thead><tr><th>Material</th><th>Loaded</th></tr></thead><tbody>'+
    matsOf(p).map(m=>'<tr><td><span class="nm">'+h(m.n)+'</span><span class="oh">'+h(m.u)+' · '+fmt(t[m.k].onhand)+' on hand</span></td><td><input type="number" inputmode="decimal" min="0" step="any" data-q="'+m.k+'" value="'+(num((l.qty||{})[m.k])||"")+'" aria-label="'+h(m.n)+' loaded"></td></tr>').join("")+
-   '</tbody></table></div><div class="btns"><button class="btn primary" data-a="back">Done</button><button class="btn danger" data-a="delLoad">Delete load</button></div>';
+   '</tbody></table></div><div class="btns"><button class="btn primary" data-a="saveLoad">Save load</button><button class="btn danger" data-a="delLoad">Delete load</button></div>';
 }
 
 async function viewHouse(app,p,s){
@@ -344,7 +344,7 @@ async function viewHouse(app,p,s){
     const ids=slot==="id"?(x.photos.id?[x.photos.id]:[]):x.photos[slot];
     return '<h3>'+label+'</h3><div class="photos" data-slot="'+slot+'">'+
       ids.map((id,i)=>'<div class="ph"><img data-pid="'+id+'" alt="'+h(label)+' '+(i+1)+'"><span class="n">'+(multi?(i+1):"")+'</span><button class="x" data-a="rmPhoto" data-slot="'+slot+'" data-id="'+id+'" aria-label="Remove photo">×</button></div>').join("")+
-      ((multi||!ids.length)?'<label class="add"><b>+</b>'+(slot==="id"?"Photo of ID":"Add photo")+'<input type="file" accept="image/*" '+(multi?"multiple":"capture=\"environment\"")+' data-slot="'+slot+'"></label>':'')+
+      ((multi||!ids.length)?'<label class="add"><b>+</b>'+(slot==="id"?"Photo of ID":"Add photo")+'<input type="file" accept="image/*" '+(multi?"multiple":"")+' data-slot="'+slot+'"></label>':'')+
       '</div>';
   };
   const nPhotos=(x.photos.id?1:0)+x.photos.before.length+x.photos.after.length;
@@ -368,7 +368,8 @@ async function viewHouse(app,p,s){
    photoSection("after","3. After: the finished job",true)+
    '</div>'+
    matsBlock+detailsBlock+
-   '<div class="btns" style="margin-top:22px"><button class="btn primary block" data-a="send"'+(nPhotos?'':' disabled')+'>Send '+nPhotos+' photo'+(nPhotos===1?'':'s')+' to WhatsApp</button></div>'+
+   '<div class="btns" style="margin-top:22px"><button class="btn blue block" data-a="saveHouse">Save house</button></div>'+
+   '<div class="btns"><button class="btn primary block" data-a="send"'+(nPhotos?'':' disabled')+'>Send '+nPhotos+' photo'+(nPhotos===1?'':'s')+' to WhatsApp</button></div>'+
    '<p class="hint">Sends the ID first, then before, then after, with no text. Pick your supervisor\u2019s group in the share sheet.</p>'+
    '<div class="btns" style="margin-top:28px">'+(x.sentAt?'<button class="btn" data-a="unsend">Mark as not sent</button>':'')+(nPhotos?'<button class="btn" data-a="clearPhotos">Clear photos from tablet</button>':'')+'<button class="btn danger" data-a="delHouse">Delete house</button></div>';
   app.querySelectorAll("img[data-pid]").forEach(async img=>{img.src=await photoURL(img.dataset.pid);});
@@ -435,6 +436,7 @@ document.addEventListener("click",async e=>{
   }
   if(a==="newLoad"&&p){const l={id:uid(),type:"load",pid:p.id,date:today(),qty:{},created:Date.now()};await save(l);return go({v:"load",pid:p.id,lid:l.id});}
   if(a==="openLoad"&&p)return go({v:"load",pid:p.id,lid:id});
+  if(a==="saveLoad"){const l=curLoad();if(l){clearTimeout(saveT);await save(l);toast("\u2713 Load saved");back();}return;}
   if(a==="delLoad"){const l=curLoad();if(l&&confirm("Delete this load?")){await remove(l.id);back();}return;}
   if(a==="addMat"&&p){
     const n=prompt("Material name (e.g. Verandah post)");if(!n||!n.trim())return;
@@ -452,7 +454,7 @@ document.addEventListener("click",async e=>{
       x.gps=pos.coords.latitude.toFixed(6)+", "+pos.coords.longitude.toFixed(6);await save(x);
       const inp=document.querySelector('[data-f="gps"]');if(inp)inp.value=x.gps;
       msg.textContent="Accurate to about "+Math.round(pos.coords.accuracy)+" m.";b.disabled=false;
-    },err=>{msg.textContent=err.code===1?"Location is blocked. Open this page in Safari and allow location, or type the coordinates.":"Couldn't get a fix. Step outside and try again, or type the coordinates.";msg.className="hint err";b.disabled=false;},
+    },err=>{msg.textContent=err.code===1?"Location is blocked. On the iPad go to Settings \u2192 Apps \u2192 Safari \u2192 Location and choose Allow, and check Settings \u2192 Privacy & Security \u2192 Location Services \u2192 Safari Websites is set to While Using the App. Then close and reopen this app. You can also type the coordinates.":"Couldn't get a fix. Step outside and try again, or type the coordinates.";msg.className="hint err";b.disabled=false;},
     {enableHighAccuracy:true,timeout:20000,maximumAge:0});
     return;
   }
@@ -462,6 +464,7 @@ document.addEventListener("click",async e=>{
     await delPhoto(id);await save(x);return render();
   }
   if(a==="send"&&x)return sendHouse(x);
+  if(a==="saveHouse"&&x){clearTimeout(saveT);await save(x);toast("\u2713 House saved");return;}
   if(a==="unsend"&&x){x.sentAt=null;await save(x);return render();}
   if(a==="clearPhotos"&&x){
     if(!confirm("Delete all photos for this house from the tablet? The details and materials stay."))return;
