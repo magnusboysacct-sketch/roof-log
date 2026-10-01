@@ -275,7 +275,7 @@ function viewProject(app,p,s){
       :'<div class="card empty">No loads yet. Add what you take from the container.</div>')+
      '<p class="hint">On hand = everything loaded minus used and extra across all houses. Leftovers carry through the whole project.</p>';
   }else{
-    body=reportHTML(p)+'<div class="btns noprint"><button class="btn blue" data-a="shareReport">Share report</button><button class="btn" data-a="saveCSV">Save as spreadsheet (CSV)</button><button class="btn" data-a="pdf">Save report as PDF</button></div>';
+    body=reportHTML(p)+'<div class="btns noprint"><button class="btn blue" data-a="shareReport">Share report</button><button class="btn" data-a="saveCSV">Save as spreadsheet (CSV)</button><button class="btn" data-a="print">Print / PDF</button></div>';
   }
   app.innerHTML='<section class="hero"><p class="parish">'+h(p.parish)+'</p><p class="sub">Started '+h(niceDate(p.date))+(p.officer?' · Field officer: '+h(p.officer):'')+'</p></section>'+
    '<div class="seg" role="tablist">'+[["houses","Houses ("+hs.length+")"],["stock","Materials"],["report","Report"]].map(([k,l])=>'<button role="tab" aria-selected="'+(tab===k)+'" data-a="tab" data-id="'+k+'">'+l+'</button>').join("")+'</div>'+body+
@@ -389,38 +389,6 @@ async function offerFile(filename,blob){
   toast("Saving files isn't available here.");return false;
 }
 
-function loadScript(src){return new Promise((res,rej)=>{if(document.querySelector('script[src="'+src+'"]'))return res();const el=document.createElement("script");el.src=src;el.onload=res;el.onerror=rej;document.head.appendChild(el);});}
-async function makePDF(p){
-  toast("Making PDF…");
-  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
-  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js");
-  const { jsPDF } = window.jspdf;
-  const doc=new jsPDF({unit:"pt",format:"letter"});
-  const t=totals(p);const ls=loadsOf(p.id);const hs=housesOf(p.id);const ms=matsOf(p);
-  const clean=s=>String(s==null?"":s).replace(/½/g," 1/2").replace(/[^\x20-\x7E]/g,"");
-  let y=48;
-  doc.setFont("helvetica","bold");doc.setFontSize(16);doc.text(clean("Hurricane Roof Repair - "+p.parish),40,y);y+=18;
-  doc.setFont("helvetica","normal");doc.setFontSize(10);
-  doc.text(clean("Started "+niceDate(p.date)+(p.officer?"   Field officer: "+p.officer:"")+"   Houses: "+hs.length+"   Loads: "+ls.length),40,y);y+=16;
-  const used=ms.filter(m=>t[m.k].loaded||t[m.k].used||t[m.k].extra);
-  doc.autoTable({startY:y,head:[["Material","Unit","Loaded","Used","Extra","Total out","On hand"]],
-    body:used.map(m=>{const x=t[m.k];return [clean(m.n),m.u,fmt(x.loaded),fmt(x.used),fmt(x.extra),fmt(x.used+x.extra),fmt(x.onhand)];}),
-    styles:{fontSize:9},headStyles:{fillColor:[21,35,42]},margin:{left:40,right:40}});
-  y=doc.lastAutoTable.finalY+20;
-  if(ls.length){
-    doc.autoTable({startY:y,head:[["Load","Date","Items"]],
-      body:ls.map((l,i)=>[String(i+1),niceDate(l.date),clean(ms.filter(m=>num((l.qty||{})[m.k])>0).map(m=>m.n+" "+fmt(num(l.qty[m.k]))).join(", "))]),
-      styles:{fontSize:9},headStyles:{fillColor:[21,35,42]},columnStyles:{2:{cellWidth:360}},margin:{left:40,right:40}});
-    y=doc.lastAutoTable.finalY+20;
-  }
-  doc.autoTable({startY:y,head:[["#","Recipient","Details","Materials (used + extra)"]],
-    body:hs.map((x,i)=>[String(i+1),clean(x.name||"Unnamed"),
-      clean([x.address,x.phone,x.houseType,x.gps?"GPS "+x.gps:""].filter(Boolean).join("\n")),
-      clean(ms.filter(m=>num((x.used||{})[m.k])||num((x.extra||{})[m.k])).map(m=>{const u=num((x.used||{})[m.k]),e=num((x.extra||{})[m.k]);return m.n+": "+fmt(u)+(e?" + "+fmt(e)+" extra":"");}).join("\n"))]),
-    styles:{fontSize:8,valign:"top"},headStyles:{fillColor:[21,35,42]},columnStyles:{0:{cellWidth:22},1:{cellWidth:100},2:{cellWidth:150}},margin:{left:40,right:40}});
-  const blob=doc.output("blob");
-  await offerFile("Report_"+p.parish.replace(/[^\w]+/g,"_")+"_"+p.date+".pdf",new Blob([blob],{type:"application/pdf"}));
-}
 async function sendHouse(x){
   const ids=[].concat(x.photos.id?[["ID",x.photos.id]]:[],x.photos.before.map((id,i)=>["BEFORE_"+(i+1),id]),x.photos.after.map((id,i)=>["AFTER_"+(i+1),id]));
   const files=[];for(const [n,id] of ids){const b=await getPhoto(id);if(b)files.push(new File([b],n+".jpg",{type:"image/jpeg"}));}
@@ -515,7 +483,7 @@ document.addEventListener("click",async e=>{
     return;
   }
   if(a==="saveCSV"&&p){await offerFile("Report_"+p.parish.replace(/[^\w]+/g,"_")+"_"+p.date+".csv",new Blob(["\ufeff"+reportCSV(p)],{type:"text/csv"}));return;}
-  if(a==="pdf"&&p){b.disabled=true;try{await makePDF(p);}catch(err){toast("Couldn't make the PDF. Check you have signal the first time, then try again.");}b.disabled=false;return;}
+  if(a==="print")return window.print();
 });
 
 let saveT;
