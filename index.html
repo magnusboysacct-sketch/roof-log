@@ -237,6 +237,12 @@ function viewHome(app){
    (ps.length?'<ul class="list card">'+ps.map(p=>{const n=housesOf(p.id).length;return '<li><button class="row" data-a="openProject" data-id="'+p.id+'"><span class="grow"><span class="t">'+h(p.parish)+'</span><br><span class="m">Started '+h(niceDate(p.date))+' · '+n+' house'+(n===1?'':'s')+'</span></span><span class="chev">›</span></button></li>';}).join("")+'</ul>'
      :'<div class="card empty">No projects yet. Start one above when you head out.</div>')+
    extrasAllHTML(ps)+
+   '<h2>Backup</h2><div class="card" style="padding:14px 16px">'+
+   '<p style="margin:0 0 4px">Saves every project, house, material and photo as one file. Keep it in Files or iCloud Drive.</p>'+
+   '<p class="hint" style="margin:0">Last backup: '+h(lastBackup())+'</p>'+
+   '<div class="btns"><button class="btn blue" data-a="backup">Back up now</button>'+
+   '<label class="btn">Restore from backup<input type="file" accept=".zip,application/zip" data-restore="1" style="display:none"></label></div>'+
+   '<p class="hint" style="margin:0">Restoring adds the backup\u2019s projects back in. Anything already on the tablet stays.</p></div>'+
    '<p class="hint">Everything is stored only on this tablet.</p>';
 }
 
@@ -275,7 +281,7 @@ function viewProject(app,p,s){
       :'<div class="card empty">No loads yet. Add what you take from the container.</div>')+
      '<p class="hint">On hand = everything loaded minus used and extra across all houses. Leftovers carry through the whole project.</p>';
   }else{
-    body=reportHTML(p)+'<div class="btns noprint"><button class="btn blue" data-a="shareReport">Share report</button><button class="btn" data-a="saveCSV">Save as spreadsheet (CSV)</button><button class="btn" data-a="print">Print / PDF</button></div>';
+    body=reportHTML(p)+'<div class="btns noprint"><button class="btn blue" data-a="shareReport">Share report</button><button class="btn" data-a="saveCSV">Save as spreadsheet (CSV)</button><button class="btn" data-a="pdf">Save report as PDF</button></div>';
   }
   app.innerHTML='<section class="hero"><p class="parish">'+h(p.parish)+'</p><p class="sub">Started '+h(niceDate(p.date))+(p.officer?' · Field officer: '+h(p.officer):'')+'</p></section>'+
    '<div class="seg" role="tablist">'+[["houses","Houses ("+hs.length+")"],["stock","Materials"],["report","Report"]].map(([k,l])=>'<button role="tab" aria-selected="'+(tab===k)+'" data-a="tab" data-id="'+k+'">'+l+'</button>').join("")+'</div>'+body+
@@ -389,6 +395,64 @@ async function offerFile(filename,blob){
   toast("Saving files isn't available here.");return false;
 }
 
+function loadScript(src){return new Promise((res,rej)=>{if(document.querySelector('script[src="'+src+'"]'))return res();const el=document.createElement("script");el.src=src;el.onload=res;el.onerror=rej;document.head.appendChild(el);});}
+async function makePDF(p){
+  toast("Making PDF…");
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js");
+  const { jsPDF } = window.jspdf;
+  const doc=new jsPDF({unit:"pt",format:"letter"});
+  const t=totals(p);const ls=loadsOf(p.id);const hs=housesOf(p.id);const ms=matsOf(p);
+  const clean=s=>String(s==null?"":s).replace(/½/g," 1/2").replace(/[^\x20-\x7E]/g,"");
+  let y=48;
+  doc.setFont("helvetica","bold");doc.setFontSize(16);doc.text(clean("Hurricane Roof Repair - "+p.parish),40,y);y+=18;
+  doc.setFont("helvetica","normal");doc.setFontSize(10);
+  doc.text(clean("Started "+niceDate(p.date)+(p.officer?"   Field officer: "+p.officer:"")+"   Houses: "+hs.length+"   Loads: "+ls.length),40,y);y+=16;
+  const used=ms.filter(m=>t[m.k].loaded||t[m.k].used||t[m.k].extra);
+  doc.autoTable({startY:y,head:[["Material","Unit","Loaded","Used","Extra","Total out","On hand"]],
+    body:used.map(m=>{const x=t[m.k];return [clean(m.n),m.u,fmt(x.loaded),fmt(x.used),fmt(x.extra),fmt(x.used+x.extra),fmt(x.onhand)];}),
+    styles:{fontSize:9},headStyles:{fillColor:[21,35,42]},margin:{left:40,right:40}});
+  y=doc.lastAutoTable.finalY+20;
+  if(ls.length){
+    doc.autoTable({startY:y,head:[["Load","Date","Items"]],
+      body:ls.map((l,i)=>[String(i+1),niceDate(l.date),clean(ms.filter(m=>num((l.qty||{})[m.k])>0).map(m=>m.n+" "+fmt(num(l.qty[m.k]))).join(", "))]),
+      styles:{fontSize:9},headStyles:{fillColor:[21,35,42]},columnStyles:{2:{cellWidth:360}},margin:{left:40,right:40}});
+    y=doc.lastAutoTable.finalY+20;
+  }
+  doc.autoTable({startY:y,head:[["#","Recipient","Details","Materials (used + extra)"]],
+    body:hs.map((x,i)=>[String(i+1),clean(x.name||"Unnamed"),
+      clean([x.address,x.phone,x.houseType,x.gps?"GPS "+x.gps:""].filter(Boolean).join("\n")),
+      clean(ms.filter(m=>num((x.used||{})[m.k])||num((x.extra||{})[m.k])).map(m=>{const u=num((x.used||{})[m.k]),e=num((x.extra||{})[m.k]);return m.n+": "+fmt(u)+(e?" + "+fmt(e)+" extra":"");}).join("\n"))]),
+    styles:{fontSize:8,valign:"top"},headStyles:{fillColor:[21,35,42]},columnStyles:{0:{cellWidth:22},1:{cellWidth:100},2:{cellWidth:150}},margin:{left:40,right:40}});
+  const blob=doc.output("blob");
+  await offerFile("Report_"+p.parish.replace(/[^\w]+/g,"_")+"_"+p.date+".pdf",new Blob([blob],{type:"application/pdf"}));
+}
+function lastBackup(){try{const v=localStorage.getItem("roofLogLastBackup");return v?new Date(+v).toLocaleString():"never";}catch(e){return "unknown";}}
+async function doBackup(){
+  if(!window.JSZip){toast("Backup needs signal the first time. Try again with signal.");return;}
+  toast("Preparing backup…");
+  const z=new JSZip();const records=[...mem.records.values()];
+  z.file("data.json",JSON.stringify({app:"roof-log",version:1,exported:Date.now(),records}));
+  const pids=new Set();records.filter(r=>r.type==="house").forEach(x=>[x.photos.id,...x.photos.before,...x.photos.after].filter(Boolean).forEach(i=>pids.add(i)));
+  for(const id of pids){const b=await getPhoto(id);if(b)z.file("photos/"+id+".jpg",b);}
+  const blob=await z.generateAsync({type:"blob",mimeType:"application/zip"});
+  const d=new Date();const stamp=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const ok=await offerFile("RoofLog_Backup_"+stamp+".zip",blob);
+  if(ok){try{localStorage.setItem("roofLogLastBackup",String(Date.now()));}catch(e){}render();}
+}
+async function doRestore(file){
+  if(!window.JSZip){toast("Restore needs signal the first time. Try again with signal.");return;}
+  let z,data;
+  try{z=await JSZip.loadAsync(file);data=JSON.parse(await z.file("data.json").async("string"));}catch(e){toast("That file isn't a Roof Log backup.");return;}
+  if(!data||data.app!=="roof-log"||!Array.isArray(data.records)){toast("That file isn't a Roof Log backup.");return;}
+  const nP=data.records.filter(r=>r.type==="project").length,nH=data.records.filter(r=>r.type==="house").length;
+  if(!confirm("Restore "+nP+" project(s) and "+nH+" house(s) from this backup? Matching items on the tablet will be replaced with the backup copy."))return;
+  toast("Restoring…");
+  const photos=z.folder("photos");const files=[];photos.forEach((path,f)=>{if(!f.dir)files.push([path,f]);});
+  for(const [path,f] of files){const b=await f.async("blob");await putPhoto(path.replace(/\.jpg$/,""),new Blob([b],{type:"image/jpeg"}));}
+  for(const r of data.records)await save(r);
+  stack=[{v:"home"}];render();toast("\u2713 Backup restored");
+}
 async function sendHouse(x){
   const ids=[].concat(x.photos.id?[["ID",x.photos.id]]:[],x.photos.before.map((id,i)=>["BEFORE_"+(i+1),id]),x.photos.after.map((id,i)=>["AFTER_"+(i+1),id]));
   const files=[];for(const [n,id] of ids){const b=await getPhoto(id);if(b)files.push(new File([b],n+".jpg",{type:"image/jpeg"}));}
@@ -420,6 +484,7 @@ document.addEventListener("click",async e=>{
     if(Object.keys(qty).length)await save({id:uid(),type:"load",pid:p.id,date:p.date,qty,created:Date.now()});
     return go({v:"project",pid:p.id,tab:"houses"});
   }
+  if(a==="backup"){b.disabled=true;try{await doBackup();}catch(err){toast("Backup failed. Check the tablet has free space.");}b.disabled=false;return;}
   if(a==="openProject")return go({v:"project",pid:id,tab:"houses"});
   if(a==="tab"){cur().tab=id;return render();}
   const p=curProject();
@@ -483,7 +548,7 @@ document.addEventListener("click",async e=>{
     return;
   }
   if(a==="saveCSV"&&p){await offerFile("Report_"+p.parish.replace(/[^\w]+/g,"_")+"_"+p.date+".csv",new Blob(["\ufeff"+reportCSV(p)],{type:"text/csv"}));return;}
-  if(a==="print")return window.print();
+  if(a==="pdf"&&p){b.disabled=true;try{await makePDF(p);}catch(err){toast("Couldn't make the PDF. Check you have signal the first time, then try again.");}b.disabled=false;return;}
 });
 
 let saveT;
@@ -500,6 +565,7 @@ document.addEventListener("input",e=>{
 function setTitle(t){const e=document.querySelector(".bar h1");if(e)e.textContent=t;const hp=document.querySelector(".hero .parish");if(hp&&cur().v==="house")hp.textContent=t;}
 document.addEventListener("change",async e=>{
   const el=e.target;
+  if(el.dataset.restore){const f=el.files[0];el.value="";if(f){try{await doRestore(f);}catch(err){toast("Restore failed.");}}return;}
   if(el.matches("select[data-f]")){const x=curHouse();if(x){x[el.dataset.f]=el.value;await save(x);}return;}
   if(el.type==="file"&&el.dataset.slot){
     const x=curHouse();if(!x||!el.files.length)return;
