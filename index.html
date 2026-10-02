@@ -479,16 +479,37 @@ function nameCandidates(text){
     if(w.length>=2&&w.length<=4&&!ID_STOP.test(c)&&!/\b(NAMES?|SURNAME|FIRST|GIVEN|LAST|ST|STREET|ROAD|RD|LANE|AVENUE|AVE|DISTRICT|P\.?O|BOX)\b/i.test(c)&&c.length>=5&&c===c.toUpperCase())add(c);});
   return out.slice(0,4);
 }
+async function prepForOCR(blob){
+  try{
+    const url=URL.createObjectURL(blob);
+    const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url;});
+    const sc=Math.min(2,3000/Math.max(img.naturalWidth,img.naturalHeight));
+    const w=Math.round(img.naturalWidth*sc),ht=Math.round(img.naturalHeight*sc);
+    const c=document.createElement("canvas");c.width=w;c.height=ht;const g=c.getContext("2d");
+    g.drawImage(img,0,0,w,ht);URL.revokeObjectURL(url);
+    const d=g.getImageData(0,0,w,ht),p=d.data;let lo=255,hi=0;const gray=new Uint8ClampedArray(w*ht);
+    for(let i=0,j=0;i<p.length;i+=4,j++){const v=0.299*p[i]+0.587*p[i+1]+0.114*p[i+2];gray[j]=v;}
+    const hist=new Array(256).fill(0);gray.forEach(v=>hist[v]++);
+    let acc=0,tot=gray.length;for(let v=0;v<256;v++){acc+=hist[v];if(acc>tot*0.02){lo=v;break;}}
+    acc=0;for(let v=255;v>=0;v--){acc+=hist[v];if(acc>tot*0.02){hi=v;break;}}
+    const rng=Math.max(1,hi-lo);
+    for(let i=0,j=0;i<p.length;i+=4,j++){const v=Math.max(0,Math.min(255,(gray[j]-lo)*255/rng));p[i]=p[i+1]=p[i+2]=v;}
+    g.putImageData(d,0,0);
+    return await new Promise(res=>c.toBlob(b=>res(b||blob),"image/png"));
+  }catch(e){return blob;}
+}
 async function readIDName(x){
   const box=document.getElementById("ocrBox");if(!box)return;
   const blob=x.photos.id&&await getPhoto(x.photos.id);if(!blob){box.textContent="Add the ID photo first.";return;}
   box.className="hint";box.textContent="Reading the ID… (the first time needs signal and takes a little longer)";
   try{
     await loadScript(TESS);
-    const r=await Tesseract.recognize(blob,"eng");
-    const c=nameCandidates(r.data.text||"");
+    const prepped=await prepForOCR(blob);
+    let r=await Tesseract.recognize(prepped,"eng");
+    let c=nameCandidates(r.data.text||"");
+    if(!c.length){r=await Tesseract.recognize(blob,"eng");c=nameCandidates(r.data.text||"");}
     if(!document.getElementById("ocrBox"))return;
-    if(!c.length){box.className="hint err";box.textContent="Couldn't find a name. Retake the ID photo flat with no glare, or tap the name box and use Scan Text.";return;}
+    if(!c.length){box.className="hint err";box.textContent="Couldn't find a name. Retake the ID photo up close so the card fills the whole picture, flat with no glare. Or tap the name box and use Scan Text.";return;}
     box.innerHTML='Tap the right name:<div class="btns" style="margin:8px 0 0">'+c.map(n=>'<button class="btn" data-a="useName" data-id="'+h(n)+'">'+h(n)+'</button>').join("")+'</div>';
   }catch(e){box.className="hint err";box.textContent="Couldn't read the ID here. Check you have signal for the first use, or tap the name box and use Scan Text.";}
 }
