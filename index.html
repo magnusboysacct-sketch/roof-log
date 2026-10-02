@@ -371,6 +371,7 @@ async function viewHouse(app,p,s){
    '<div class="card" style="padding:2px 16px 16px">'+
    photoSection("before","1. Before: the damage",true)+
    photoSection("id","2. Government ID",false)+
+   (x.photos.id?'<div style="margin-top:10px"><button class="btn" data-a="ocr">Read name from ID</button><div id="ocrBox" class="hint" aria-live="polite"></div></div>':'')+
    photoSection("after","3. After: the finished job",true)+
    '</div>'+
    matsBlock+detailsBlock+
@@ -453,6 +454,44 @@ async function doRestore(file){
   for(const r of data.records)await save(r);
   stack=[{v:"home"}];render();toast("\u2713 Backup restored");
 }
+const TESS="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+const ID_STOP=/\b(JAMAICA|JAMAICAN|GOVERNMENT|DRIVER|DRIVERS|DRIVER'S|LICEN[CS]E|PERMIT|NATIONAL|IDENTIFICATION|IDENTITY|CARD|ELECTORAL|OFFICE|VOTER|VOTERS|REGISTRATION|REPUBLIC|PASSPORT|TAX|TAXPAYER|TRN|ADDRESS|CLASS|SEX|DATE|BIRTH|EXPIRY|EXPIRES|ISSUE|ISSUED|SIGNATURE|HOLDER|NATIONALITY|COUNTRY|TYPE|CODE|AUTHORITY|ISLAND|TRAFFIC|COLLECTORATE|PARISH|KINGSTON|ANDREW|CATHERINE|CLARENDON|MANCHESTER|ELIZABETH|WESTMORELAND|HANOVER|JAMES|TRELAWNY|ANN|MARY|PORTLAND|THOMAS|HEIGHT|EYES|MALE|FEMALE|DONOR|RESTRICTIONS|ORIGINAL|DUPLICATE|NO|NUMBER)\b/i;
+const titleCase=s=>s.toLowerCase().replace(/\b([a-z])/g,c=>c.toUpperCase()).replace(/\s+/g," ").trim();
+function nameCandidates(text){
+  const out=[];const add=n=>{n=titleCase(n.replace(/[^A-Za-z' -]/g," "));if(n.split(" ").filter(w=>w.length>1).length>=2&&!out.includes(n))out.push(n);};
+  const raw=text.split(/\n/).map(l=>l.trim()).filter(Boolean);
+  // Passport machine-readable line: P<JAMSURNAME<<GIVEN<NAMES
+  raw.forEach(l=>{const m=l.replace(/\s/g,"").toUpperCase().match(/^P[<A-Z0-9][A-Z<]{3}([A-Z<]+<<[A-Z<]+)/);
+    if(m){const [sur,giv]=m[1].split("<<");if(sur&&giv)add(giv.replace(/</g," ")+" "+sur.replace(/</g," "));}});
+  // Labelled fields
+  let sur="",giv="";
+  raw.forEach((l,i)=>{
+    const val=()=>{const after=l.split(/[:\-]/).slice(1).join(" ").trim();return after||raw[i+1]||"";};
+    if(/\b(SURNAME|LAST\s*NAME|FAMILY\s*NAME)\b/i.test(l))sur=sur||val();
+    else if(/\b(FIRST\s*NAME|GIVEN\s*NAMES?|FORENAMES?|CHRISTIAN\s*NAMES?)\b/i.test(l))giv=giv||val();
+    else if(/^\s*NAME\b/i.test(l))add(val());
+  });
+  const clean=v=>v.replace(/[^A-Za-z' -]/g," ").replace(ID_STOP," ").trim();
+  if(sur&&giv)add(clean(giv)+" "+clean(sur));
+  // Fallback: lines that look like a name
+  raw.forEach(l=>{const c=l.replace(/[^A-Za-z' -]/g," ").replace(/\s+/g," ").trim();
+    const w=c.split(" ").filter(x=>x.length>1);
+    if(w.length>=2&&w.length<=4&&!ID_STOP.test(c)&&!/\b(NAMES?|SURNAME|FIRST|GIVEN|LAST|ST|STREET|ROAD|RD|LANE|AVENUE|AVE|DISTRICT|P\.?O|BOX)\b/i.test(c)&&c.length>=5&&c===c.toUpperCase())add(c);});
+  return out.slice(0,4);
+}
+async function readIDName(x){
+  const box=document.getElementById("ocrBox");if(!box)return;
+  const blob=x.photos.id&&await getPhoto(x.photos.id);if(!blob){box.textContent="Add the ID photo first.";return;}
+  box.className="hint";box.textContent="Reading the ID… (the first time needs signal and takes a little longer)";
+  try{
+    await loadScript(TESS);
+    const r=await Tesseract.recognize(blob,"eng");
+    const c=nameCandidates(r.data.text||"");
+    if(!document.getElementById("ocrBox"))return;
+    if(!c.length){box.className="hint err";box.textContent="Couldn't find a name. Retake the ID photo flat with no glare, or tap the name box and use Scan Text.";return;}
+    box.innerHTML='Tap the right name:<div class="btns" style="margin:8px 0 0">'+c.map(n=>'<button class="btn" data-a="useName" data-id="'+h(n)+'">'+h(n)+'</button>').join("")+'</div>';
+  }catch(e){box.className="hint err";box.textContent="Couldn't read the ID here. Check you have signal for the first use, or tap the name box and use Scan Text.";}
+}
 async function sendHouse(x){
   const ids=[].concat(x.photos.id?[["ID",x.photos.id]]:[],x.photos.before.map((id,i)=>["BEFORE_"+(i+1),id]),x.photos.after.map((id,i)=>["AFTER_"+(i+1),id]));
   const files=[];for(const [n,id] of ids){const b=await getPhoto(id);if(b)files.push(new File([b],n+".jpg",{type:"image/jpeg"}));}
@@ -529,6 +568,8 @@ document.addEventListener("click",async e=>{
     await delPhoto(id);await save(x);return render();
   }
   if(a==="send"&&x)return sendHouse(x);
+  if(a==="ocr"&&x){b.disabled=true;await readIDName(x);b.disabled=false;return;}
+  if(a==="useName"&&x){x.name=id;await save(x);const inp=document.querySelector('[data-f="name"]');if(inp)inp.value=id;setTitle(id);const bx=document.getElementById("ocrBox");if(bx){bx.className="hint";bx.textContent="\u2713 Name filled in: "+id;}return;}
   if(a==="saveHouse"&&x){clearTimeout(saveT);await save(x);toast("\u2713 House saved");return;}
   if(a==="unsend"&&x){x.sentAt=null;await save(x);return render();}
   if(a==="clearPhotos"&&x){
@@ -575,6 +616,7 @@ document.addEventListener("change",async e=>{
       if(slot==="id"){if(x.photos.id)await delPhoto(x.photos.id);x.photos.id=pid;}else x.photos[slot].push(pid);
     }
     await save(x);render();
+    if(slot==="id"&&!x.name)readIDName(x);
   }
 });
 
