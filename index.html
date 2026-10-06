@@ -513,24 +513,46 @@ async function readIDName(x){
     box.innerHTML='Tap the right name:<div class="btns" style="margin:8px 0 0">'+c.map(n=>'<button class="btn" data-a="useName" data-id="'+h(n)+'">'+h(n)+'</button>').join("")+'</div>';
   }catch(e){box.className="hint err";box.textContent="Couldn't read the ID here. Check you have signal for the first use, or tap the name box and use Scan Text.";}
 }
+let readyShare=null;
 async function sendHouse(x){
+  // Step 1: get the photos ready. Safari only allows sharing straight after a tap,
+  // so the actual share happens on a second tap (step 2) once everything is loaded.
   const ids=[].concat(x.photos.id?[["ID",x.photos.id]]:[],x.photos.before.map((id,i)=>["BEFORE_"+(i+1),id]),x.photos.after.map((id,i)=>["AFTER_"+(i+1),id]));
+  toast("Getting photos ready…");
   const files=[];for(const [n,id] of ids){const b=await getPhoto(id);if(b)files.push(new File([b],n+".jpg",{type:"image/jpeg"}));}
-  if(!files.length){toast("No photos to send.");return;}
-  let shared=false;
-  if(navigator.canShare&&navigator.canShare({files})){
-    try{await navigator.share({files});shared=true;}catch(e){if(e&&e.name==="AbortError")return;}
-  }
-  if(!shared){
-    if(!window.JSZip){toast("Sharing isn't available here. Open this page in Safari.");return;}
-    toast("Sharing photos directly isn't available here. Saving them as one zip instead.");
-    const z=new JSZip();files.forEach(f=>z.file(f.name,f));
-    const blob=await z.generateAsync({type:"blob"});
-    shared=await offerFile(((x.name||"house").replace(/[^\w]+/g,"_"))+".zip",blob);
-    if(!shared)return;
-  }
-  if(confirm("Mark this house as sent?")){x.sentAt=Date.now();await save(x);render();}
+  if(!files.length){toast("No photos found for this house.");return;}
+  readyShare={x,files};
+  let el=document.getElementById("shareSheet");
+  if(!el){el=document.createElement("div");el.id="shareSheet";document.body.appendChild(el);}
+  el.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:30;display:flex;align-items:center;justify-content:center;padding:16px";
+  el.innerHTML='<div class="card" style="padding:20px;max-width:420px;width:100%;text-align:center"><h3 style="margin-top:0">'+files.length+' photo'+(files.length===1?'':'s')+' ready</h3><p class="hint">ID first, then before, then after.</p>'+
+    '<div class="btns" style="flex-direction:column"><button class="btn primary block" data-a="shareNow">Open share sheet (pick WhatsApp)</button><button class="btn block" data-a="shareZip">Save as one zip file instead</button><button class="btn block" data-a="shareClose">Cancel</button></div></div>';
 }
+function closeShare(){const el=document.getElementById("shareSheet");if(el)el.remove();}
+async function afterShared(){const r=readyShare;closeShare();readyShare=null;if(r&&confirm("Mark this house as sent?")){r.x.sentAt=Date.now();await save(r.x);render();}}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a;
+  if(a==="shareClose"){closeShare();readyShare=null;return;}
+  if(a==="shareNow"&&readyShare){
+    const files=readyShare.files;
+    if(!(navigator.canShare&&navigator.canShare({files}))){toast("This iPad can't share these photos directly. Use 'Save as one zip file instead'.");return;}
+    // Called right inside the tap, nothing awaited before it.
+    navigator.share({files}).then(afterShared).catch(err=>{
+      if(err&&err.name==="AbortError")return;
+      toast("Sharing failed ("+(err&&err.name||"error")+"). Try again, or use the zip option.");
+    });
+    return;
+  }
+  if(a==="shareZip"&&readyShare){
+    (async()=>{
+      if(!window.JSZip){toast("Zip needs signal the first time.");return;}
+      const r=readyShare;const z=new JSZip();r.files.forEach(f=>z.file(f.name,f));
+      const blob=await z.generateAsync({type:"blob"});
+      const ok=await offerFile(((r.x.name||"house").replace(/[^\w]+/g,"_"))+".zip",blob);
+      if(ok)afterShared();
+    })();
+  }
+});
 
 function markDirty(){}
 document.addEventListener("click",async e=>{
